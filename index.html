@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>체험 대기 호출</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#15171F; --ink2:#232634; --paper:#F1EFF4; --card:#FFFFFF;
+  --line:#DEDAE7; --amber:#FFB300; --amber-soft:#FFE9B0; --teal:#12907F;
+  --red:#CF4444; --muted:#6E6B7A; --r:16px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper); color:var(--ink); min-height:100vh;
+  font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased; letter-spacing:-.01em;
+}
+.mono{font-family:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;font-variant-numeric:tabular-nums}
+button{font-family:inherit}
+a{color:inherit}
+.wrap{max-width:760px;margin:0 auto;padding:18px 16px 64px}
+.wrap-wide{max-width:1080px;margin:0 auto;padding:18px 16px 64px}
+.eyebrow{font-size:11px;letter-spacing:.2em;font-weight:700;color:var(--muted)}
+h1{font-size:24px;font-weight:800;margin:6px 0 4px;letter-spacing:-.03em}
+h2{font-size:16px;font-weight:750;margin:0 0 10px;letter-spacing:-.02em}
+p.lead{margin:0;color:var(--muted);font-size:14px;line-height:1.6}
+
+/* ---------- 공통 컴포넌트 ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.card + .card{margin-top:12px}
+.row{display:flex;gap:8px;align-items:center}
+.row-wrap{display:flex;gap:8px;flex-wrap:wrap}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.btn{
+  appearance:none;border:1px solid var(--ink);background:var(--ink);color:#fff;
+  border-radius:12px;padding:12px 16px;font-size:15px;font-weight:700;cursor:pointer;
+  transition:transform .08s ease, opacity .15s ease;
+}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.amber{background:var(--amber);border-color:var(--amber);color:#231A00}
+.btn.teal{background:var(--teal);border-color:var(--teal)}
+.btn.red{background:transparent;color:var(--red);border-color:#EFD3D3}
+.btn.sm{padding:8px 11px;font-size:13px;border-radius:10px}
+.btn.block{width:100%;justify-content:center}
+.btn.lg{padding:17px 20px;font-size:17px;border-radius:14px;width:100%}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+label.f{display:block;margin-bottom:12px}
+label.f > span{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
+input,select,textarea{
+  width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;
+  font-size:16px;font-family:inherit;background:#fff;color:var(--ink);
+}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--ink);outline-offset:0;border-color:var(--ink)}
+.hint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.55}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:5px 9px;border-radius:999px;background:#EEEBF3;color:var(--muted)}
+.chip.wait{background:#EDEAF4;color:#514D63}
+.chip.call{background:var(--amber-soft);color:#7A5200}
+.chip.done{background:#DCF0EC;color:#0C6357}
+.chip.cancel{background:#F6E4E4;color:#9B3232}
+.divider{height:1px;background:var(--line);margin:14px 0}
+.empty{padding:26px 14px;text-align:center;color:var(--muted);font-size:14px;line-height:1.6;border:1px dashed var(--line);border-radius:var(--r)}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0 14px}
+.back{font-size:13px;font-weight:700;color:var(--muted);text-decoration:none}
+.banner{background:#3A2A00;color:var(--amber-soft);font-size:13px;padding:10px 14px;text-align:center;font-weight:600}
+.banner.err{background:#4A1414;color:#FFD9D9}
+
+/* ---------- 동의 / 정원 ---------- */
+.consent{display:flex;gap:10px;align-items:flex-start;padding:14px;border:1px solid var(--line);border-radius:12px;background:#FAF9FC}
+.consent input[type=checkbox]{width:20px;height:20px;flex:none;margin:1px 0 0;accent-color:var(--ink)}
+.consent .c-txt{font-size:13.5px;line-height:1.6}
+.consent .c-txt b{font-weight:750;display:block;margin-bottom:4px;font-size:14px}
+.consent .c-txt span{color:var(--muted)}
+.cap-bar{height:8px;border-radius:99px;background:#E4E0EC;overflow:hidden;margin-top:8px}
+.cap-bar i{display:block;height:100%;background:var(--amber)}
+.daytable{width:100%;border-collapse:collapse;font-size:13.5px}
+.daytable th,.daytable td{padding:9px 6px;border-bottom:1px solid var(--line);text-align:left}
+.daytable th{font-size:11.5px;letter-spacing:.1em;color:var(--muted)}
+.daytable td:last-child,.daytable th:last-child{text-align:right}
+.daytable tr.full td{color:var(--red)}
+.daytable tr.today td{background:#FFF8E6}
+
+/* ---------- 홈 ---------- */
+.home-hero{padding:34px 0 10px}
+.home-num{font-size:74px;font-weight:700;line-height:.9;letter-spacing:-.05em}
+.menu{display:grid;gap:10px;margin-top:20px}
+.menu a{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;
+}
+.menu a strong{display:block;font-size:15px;font-weight:750}
+.menu a small{display:block;color:var(--muted);font-size:12.5px;margin-top:3px}
+.menu .arrow{font-size:18px;color:var(--muted)}
+
+/* ---------- 번호표(티켓) ---------- */
+.ticket{position:relative;background:#fff;border:1px solid var(--line);border-radius:20px}
+.ticket .t-head{padding:18px 20px 14px;text-align:center}
+.ticket .perf{position:relative;border-top:2px dashed var(--line)}
+.ticket .perf::before,.ticket .perf::after{
+  content:'';position:absolute;top:-15px;width:28px;height:28px;background:var(--paper);
+  border:1px solid var(--line);border-radius:50%;
+}
+.ticket .perf::before{left:-15px;clip-path:inset(0 0 0 50%)}
+.ticket .perf::after{right:-15px;clip-path:inset(0 50% 0 0)}
+.ticket .t-body{padding:18px 20px 20px}
+.bignum{font-size:88px;font-weight:700;line-height:1;letter-spacing:-.05em}
+.ahead{font-size:15px;font-weight:700}
+.ahead b{font-size:22px}
+.meta-list{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:14px}
+.meta-list dt{color:var(--muted);font-weight:600}
+.meta-list dd{margin:0;font-weight:650;text-align:right}
+
+/* 호출 상태 전체 강조 */
+.calling{background:var(--amber);border-color:var(--amber-soft)}
+.calling .t-head,.calling .t-body{color:#221900}
+.calling .perf{border-top-color:rgba(0,0,0,.25)}
+.calling .perf::before,.calling .perf::after{background:var(--paper);border-color:var(--line)}
+body.is-calling{background:var(--amber)}
+body.is-calling .ticket{box-shadow:0 0 0 6px rgba(255,255,255,.5)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.pulse{animation:pulse 1.1s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+
+/* ---------- 스태프 콘솔 ---------- */
+.stat-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 12px}
+.stat b{display:block;font-size:22px;font-weight:700;letter-spacing:-.03em}
+.stat span{font-size:11.5px;color:var(--muted);font-weight:650}
+.q-item{display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.q-item + .q-item{margin-top:8px}
+.q-item.now{background:#FFF8E6;border-color:#F0D48A}
+.q-no{font-size:26px;font-weight:700;min-width:56px;letter-spacing:-.03em}
+.q-info{flex:1;min-width:0}
+.q-name{font-size:15px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q-sub{font-size:12.5px;color:var(--muted);margin-top:3px}
+.q-acts{display:flex;gap:6px;flex-shrink:0}
+@media (max-width:560px){
+  .q-item{flex-wrap:wrap}
+  .q-acts{width:100%;justify-content:flex-end}
+  .stat-strip{grid-template-columns:repeat(2,1fr)}
+}
+
+/* ---------- 현황판 ---------- */
+body.board{background:var(--ink);color:#fff}
+.board-wrap{padding:24px;min-height:100vh;display:flex;flex-direction:column;gap:20px}
+.board-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #333846;padding-bottom:14px}
+.board-head h1{color:#fff;font-size:22px;margin:0}
+.board-head .clock{font-size:20px;color:var(--amber)}
+.flip-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.flip{background:var(--ink2);border:1px solid #343A49;border-radius:18px;padding:22px;overflow:hidden}
+.flip .lab{font-size:12px;letter-spacing:.22em;color:#8B8FA0;font-weight:700}
+.flip .val{font-size:clamp(56px,11vw,110px);font-weight:700;color:var(--amber);line-height:1;letter-spacing:-.05em;margin-top:8px}
+.flip .who{font-size:15px;color:#C9CCD8;margin-top:10px;font-weight:650}
+@keyframes flipin{from{transform:translateY(-24%) rotateX(45deg);opacity:0}to{transform:none;opacity:1}}
+.flip .val.new{animation:flipin .4s cubic-bezier(.2,.8,.3,1)}
+.board-list{flex:1}
+.board-list .lab{font-size:12px;letter-spacing:.22em;color:#8B8FA0;font-weight:700;margin-bottom:12px}
+.board-nums{display:flex;flex-wrap:wrap;gap:10px}
+.board-nums span{
+  font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;
+  font-size:26px;font-weight:600;color:#E7E9F0;background:#232634;border:1px solid #343A49;
+  border-radius:12px;padding:8px 16px;
+}
+.board-foot{display:flex;justify-content:space-between;align-items:center;color:#8B8FA0;font-size:13px;gap:16px}
+.board-qr{background:#fff;padding:10px;border-radius:12px;line-height:0}
+
+/* ---------- 안내문 인쇄 ---------- */
+.poster{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:40px 32px;text-align:center}
+.poster .p-eyebrow{font-size:13px;letter-spacing:.3em;font-weight:700;color:var(--muted)}
+.poster h2{font-size:32px;font-weight:800;margin:12px 0 6px;letter-spacing:-.03em}
+.poster .p-qr{display:inline-block;padding:16px;border:2px dashed var(--line);border-radius:20px;margin:22px 0 14px;line-height:0}
+.poster ol{text-align:left;max-width:340px;margin:16px auto 0;padding-left:20px;font-size:15px;line-height:1.9;color:#3A3745}
+@media print{
+  body{background:#fff}
+  .noprint{display:none !important}
+  .poster{border:none;padding:0}
+  .wrap{max-width:none;padding:0}
+}
+.qr-box{display:inline-block;padding:12px;background:#fff;border:1px solid var(--line);border-radius:14px;line-height:0}
+.linkbox{font-size:12.5px;word-break:break-all;background:#F7F6FA;border:1px solid var(--line);border-radius:10px;padding:10px;color:#4A4757}
+code.sql{display:block;white-space:pre-wrap;font-size:11.5px;background:var(--ink);color:#D8DBE6;padding:12px;border-radius:10px;line-height:1.6;overflow:auto}
+</style>
+</head>
+<body>
+<div id="banner"></div>
+<div id="app"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+/* ============================================================
+   체험 대기 호출 — 단일 HTML 앱
+   1) 고객: QR 스캔 → 신청 → 번호표 화면에서 대기 (호출되면 화면·소리·진동)
+   2) 스태프: 대기 목록에서 순서대로 호출 / 입장 / 취소
+   3) 현황판: 큰 화면에 호출 번호 표시
+
+   ▼ 여러 기기에서 함께 쓰려면 구글시트 Apps Script 웹앱 주소를 넣으세요(설정 화면에서도 입력 가능).
+   ============================================================ */
+const SHEET_API = '';   // 예: https://script.google.com/macros/s/AKfy.../exec
+
+/* ---------- 기본 설정 ---------- */
+const DEFAULT_CONFIG = {
+  title: '체험 프로그램 접수',
+  place: '',
+  programs: [{ id: 'p1', name: '체험 프로그램', minutes: 15 }],
+  lanes: 1,
+  phoneMode: 'full',       // full | last4
+  askPeople: true,
+  startDate: '',           // 체험 시작일 (YYYY-MM-DD)
+  endDate: '',             // 체험 종료일
+  dailyCap: 40,            // 하루 체험 가능 인원
+  capMode: 'people',       // people(명) | teams(팀)
+  notice: '호출되면 이 화면이 노란색으로 바뀌고 알림이 울립니다. 부스 근처에서 대기해 주세요.',
+  consentText: '체험 호출을 위한 기본 정보만 수집하며 전시회 종료 후 폐기합니다.'
+};
+const newState = () => ({ config: JSON.parse(JSON.stringify(DEFAULT_CONFIG)), entries: [], seq: 0 });
+
+/* ---------- 저장소 (로컬 / Supabase) ---------- */
+const qs = new URLSearchParams(location.search);
+const ROOM = qs.get('room') || 'main';
+
+const LS = (() => {
+  try { const k = '__qtest'; window.localStorage.setItem(k, '1'); window.localStorage.removeItem(k); return window.localStorage; }
+  catch (e) { return null; }
+})();
+const MEM = {};
+const lsGet = k => { try { return LS ? LS.getItem(k) : (MEM[k] ?? null); } catch (e) { return MEM[k] ?? null; } };
+const lsSet = (k, v) => { try { LS ? LS.setItem(k, v) : (MEM[k] = v); } catch (e) { MEM[k] = v; } };
+
+function readApi() {
+  const g = qs.get('g');
+  if (g) { try { const u = atob(g); if (u) return u; } catch (e) {} }
+  if (SHEET_API) return SHEET_API;
+  return lsGet('expq-api') || '';
+}
+let API = readApi();
+const isCloud = () => /^https:\/\/script\.google\.com\//.test(API);
+const credParam = () => isCloud() ? ('?g=' + btoa(API) + (ROOM !== 'main' ? '&room=' + ROOM : '')) : '';
+let netError = '';
+
+/* ----- 로컬 저장(연결 전 미리보기용) ----- */
+function localState() {
+  const raw = lsGet('expq-' + ROOM);
+  const base = raw ? JSON.parse(raw) : null;
+  return base ? { ...newState(), ...base, config: { ...DEFAULT_CONFIG, ...(base.config || {}) } } : newState();
+}
+function localSave(st) { lsSet('expq-' + ROOM, JSON.stringify(st)); try { bc && bc.postMessage('sync'); } catch (e) {} }
+function localOp(action, p) {
+  const st = localState();
+  if (action === 'join') {
+    const e = p.entry;
+    if (dateList(st).length && remainOn(e.date, st) < (st.config.capMode === 'teams' ? 1 : e.people))
+      throw new Error(fmtDate(e.date) + ' 자리가 마감되었습니다. 다른 날짜를 선택해 주세요.');
+    e.num = onDate(e.date, st).reduce((m, x) => Math.max(m, x.num || 0), 0) + 1;
+    st.entries.push(e); localSave(st); return { entry: e };
+  }
+  if (action === 'patch') { const e = st.entries.find(x => x.id === p.id); if (e) Object.assign(e, p.patch); localSave(st); return {}; }
+  if (action === 'config') { st.config = { ...st.config, ...p.config }; localSave(st); return {}; }
+  if (action === 'reset') { st.entries = []; localSave(st); return {}; }
+  return {};
+}
+
+/* ----- 구글시트(Apps Script 웹앱) ----- */
+const Api = {
+  async load() {
+    if (!isCloud()) return localState();
+    const r = await fetch(API + (API.includes('?') ? '&' : '?') + 'action=get&room=' + encodeURIComponent(ROOM), { redirect: 'follow' });
+    if (!r.ok) throw new Error('시트를 불러오지 못했습니다 (' + r.status + ')');
+    const j = await r.json();
+    if (j.error) throw new Error(j.error);
+    return j;
+  },
+  async call(action, payload) {
+    if (!isCloud()) return localOp(action, payload);
+    // Content-Type을 text/plain으로 보내야 Apps Script에서 CORS 프리플라이트 없이 처리됩니다.
+    const r = await fetch(API, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action, room: ROOM, ...payload })
+    });
+    if (!r.ok) throw new Error('시트에 저장하지 못했습니다 (' + r.status + ')');
+    const j = await r.json();
+    if (j.error) throw new Error(j.error);
+    return j;
+  }
+};
+let bc = null;
+try { bc = new BroadcastChannel('expq-' + ROOM); bc.onmessage = () => refresh(); } catch (e) {}
+window.addEventListener('storage', e => { if (e.key === 'expq-' + ROOM) refresh(); });
+
+let S = newState();
+
+async function refresh(silent) {
+  try {
+    const d = await Api.load();
+    if (d) S = { ...newState(), ...d, config: { ...DEFAULT_CONFIG, ...(d.config || {}) } };
+    netError = '';
+  } catch (e) { netError = e.message; }
+  if (!silent) render();
+}
+/* 모든 변경은 시트에서 잠금(LockService)을 걸고 처리 → 동시 신청에도 정원이 초과되지 않습니다 */
+async function op(action, payload) {
+  try {
+    const res = await Api.call(action, payload);
+    netError = '';
+    await refresh(true); render();
+    return res || {};
+  } catch (e) {
+    netError = e.message; render(); alert(e.message); return null;
+  }
+}
+const patchEntry = (id, patch) => op('patch', { id, patch });
+const saveConfig = (config) => op('config', { config });
+
+/* ---------- 유틸 ---------- */
+const $ = s => document.querySelector(s);
+const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = n => String(n).padStart(3, '0');
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const hhmm = ts => { const d = new Date(ts); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
+const minsSince = ts => Math.max(0, Math.round((Date.now() - ts) / 60000));
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const WD = ['일','월','화','수','목','금','토'];
+const fmtDate = s => { if (!s) return ''; const [y,m,d] = s.split('-').map(Number); const dt = new Date(y, m-1, d); return `${m}월 ${d}일 (${WD[dt.getDay()]})`; };
+let VIEW_DATE = todayStr();
+
+function dateList(st) {
+  const c = (st || S).config;
+  if (!c.startDate || !c.endDate) return [];
+  const out = []; const d = new Date(c.startDate + 'T00:00'), end = new Date(c.endDate + 'T00:00');
+  while (d <= end && out.length < 90) {
+    out.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+const capUnit = (st) => ((st || S).config.capMode === 'teams' ? '팀' : '명');
+const onDate = (d, st) => (st || S).entries.filter(e => (e.date || todayStr()) === d);
+function usedOn(d, st) {
+  const c = (st || S).config;
+  return onDate(d, st).filter(e => e.state !== 'cancel')
+    .reduce((s, e) => s + (c.capMode === 'teams' ? 1 : (e.people || 1)), 0);
+}
+const remainOn = (d, st) => Math.max(0, ((st || S).config.dailyCap || 0) - usedOn(d, st));
+
+const waiting = (d) => onDate(d || VIEW_DATE).filter(e => e.state === 'waiting').sort((a, b) => a.order - b.order);
+const called = (d) => onDate(d || VIEW_DATE).filter(e => e.state === 'called').sort((a, b) => (b.calledAt || 0) - (a.calledAt || 0));
+const progName = id => (S.config.programs.find(p => p.id === id) || {}).name || '체험';
+const stateChip = st => ({
+  waiting: '<span class="chip wait">대기 중</span>',
+  called: '<span class="chip call">호출 중</span>',
+  done: '<span class="chip done">입장 완료</span>',
+  cancel: '<span class="chip cancel">취소</span>'
+}[st] || '');
+function joinURL() { return location.origin + location.pathname + credParam() + '#/join'; }
+function boardURL() { return location.origin + location.pathname + credParam() + '#/board'; }
+
+/* ---------- 알림(소리·진동) ---------- */
+let audioCtx = null;
+function primeAudio() { try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch (e) {} }
+function beep() {
+  try {
+    primeAudio(); if (!audioCtx) return;
+    [0, .28, .56].forEach((t, i) => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.value = i === 2 ? 1046 : 784;
+      g.gain.setValueAtTime(.0001, audioCtx.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(.35, audioCtx.currentTime + t + .02);
+      g.gain.exponentialRampToValueAtTime(.0001, audioCtx.currentTime + t + .22);
+      o.connect(g).connect(audioCtx.destination); o.start(audioCtx.currentTime + t); o.stop(audioCtx.currentTime + t + .24);
+    });
+  } catch (e) {}
+  try { navigator.vibrate && navigator.vibrate([300, 120, 300, 120, 500]); } catch (e) {}
+}
+
+/* ---------- 라우팅 ---------- */
+function route() {
+  const h = location.hash.replace(/^#\/?/, '');
+  const [name, arg] = h.split('/');
+  return { name: name || 'home', arg: arg || '' };
+}
+window.addEventListener('hashchange', () => { window.scrollTo(0, 0); render(); });
+
+/* ---------- 화면들 ---------- */
+function viewHome() {
+  const mode = isCloud() ? '구글시트 연결됨' : '이 기기에만 저장됨';
+  return `<div class="wrap">
+    <div class="home-hero">
+      <div class="eyebrow">체험 프로그램 대기 호출</div>
+      <h1>${esc(S.config.title)}</h1>
+      <p class="lead">고객이 QR로 신청하면 순서대로 대기표가 발급되고, 부스에서 차례로 호출합니다.</p>
+      <div class="row" style="margin-top:14px">
+        <span class="chip">${mode}</span>
+        <span class="chip">대기 ${waiting().length}팀</span>
+      </div>
+    </div>
+    <div class="menu">
+      <a href="#/staff"><span><strong>부스 콘솔</strong><small>대기 목록 확인하고 다음 팀 호출하기</small></span><span class="arrow">→</span></a>
+      <a href="#/board"><span><strong>대기 현황판</strong><small>큰 화면에 호출 번호 띄우기</small></span><span class="arrow">→</span></a>
+      <a href="#/poster"><span><strong>신청 QR·안내문</strong><small>QR 만들고 A4로 인쇄하기</small></span><span class="arrow">→</span></a>
+      <a href="#/join"><span><strong>신청 화면 미리보기</strong><small>고객이 보게 될 신청 폼</small></span><span class="arrow">→</span></a>
+      <a href="#/setup"><span><strong>설정</strong><small>기간·정원·프로그램·구글시트 연결</small></span><span class="arrow">→</span></a>
+    </div>
+  </div>`;
+}
+
+function viewJoin() {
+  const c = S.config;
+  const days = dateList();
+  const today = todayStr();
+  const openDays = days.filter(d => d >= today);
+  const progOpts = c.programs.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+
+  // 기간이 설정된 경우: 신청 가능한 날짜만 보여줌
+  if (days.length && !openDays.length) {
+    return `<div class="wrap"><div class="empty" style="margin-top:60px">체험 기간이 끝났습니다.<br>이용해 주셔서 감사합니다.</div></div>`;
+  }
+  const pick = openDays.find(d => remainOn(d) > 0) || openDays[0] || today;
+  const dayOpts = openDays.map(d => {
+    const r = remainOn(d);
+    return `<option value="${d}" ${r <= 0 ? 'disabled' : ''} ${d === pick ? 'selected' : ''}>${fmtDate(d)} · ${r <= 0 ? '마감' : '잔여 ' + r + capUnit()}</option>`;
+  }).join('');
+  const remainNow = remainOn(pick);
+  const full = days.length && remainNow <= 0;
+
+  return `<div class="wrap">
+    <div class="home-hero" style="padding-top:26px">
+      <div class="eyebrow">체험 신청</div>
+      <h1>${esc(c.title)}</h1>
+      ${c.place ? `<p class="lead">${esc(c.place)}</p>` : ''}
+      ${days.length ? `<p class="lead" style="margin-top:6px">체험 기간 ${fmtDate(c.startDate)} – ${fmtDate(c.endDate)} · 하루 ${c.dailyCap}${capUnit()}</p>` : ''}
+    </div>
+    <div class="card">
+      ${days.length ? `<label class="f"><span>체험 희망일</span><select id="f-date">${dayOpts}</select>
+        <div class="hint" id="f-remain">${full ? '선택한 날짜는 마감되었습니다. 다른 날짜를 골라주세요.' : `남은 자리 ${remainNow}${capUnit()}`}</div></label>` : ''}
+      <label class="f"><span>이름</span><input id="f-name" placeholder="예: 박미화" autocomplete="name"></label>
+      <label class="f"><span>연락처</span>
+        <input id="f-phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="${c.phoneMode === 'last4' ? '뒤 4자리' : '010-0000-0000'}" ${c.phoneMode === 'last4' ? 'maxlength="4"' : ''}>
+        <div class="hint">호출 안내와 본인 확인에만 사용합니다.</div></label>
+      ${c.askPeople ? `<label class="f"><span>인원</span><select id="f-people">${[1,2,3,4,5,6].map(n=>`<option value="${n}">${n}명</option>`).join('')}</select></label>` : ''}
+      ${c.programs.length > 1 ? `<label class="f"><span>체험 선택</span><select id="f-prog">${progOpts}</select></label>` : ''}
+
+      <div class="consent">
+        <input type="checkbox" id="f-consent">
+        <label class="c-txt" for="f-consent">
+          <b>개인정보 수집·이용 동의 (필수)</b>
+          <span>${esc(c.consentText)}</span>
+        </label>
+      </div>
+
+      <button class="btn lg amber" data-act="join" style="margin-top:14px">대기 신청하기</button>
+      <div class="hint" style="text-align:center;margin-top:10px">신청하면 대기번호가 바로 나옵니다.</div>
+    </div>
+    <div style="text-align:center;margin-top:16px"><a class="back" href="#/">← 처음으로</a></div>
+  </div>`;
+}
+
+function viewTicket(id) {
+  const me = S.entries.find(e => e.id === id);
+  if (!me) return `<div class="wrap"><div class="empty" style="margin-top:60px">대기표를 찾을 수 없습니다.<br>QR을 다시 스캔해 신청해 주세요.</div>
+    <div style="text-align:center;margin-top:16px"><a class="btn ghost" href="#/join">신청 화면으로</a></div></div>`;
+
+  const ahead = waiting().filter(e => e.order < me.order).length;
+  const per = (S.config.programs.find(p => p.id === me.programId) || {}).minutes || 15;
+  const eta = Math.max(0, Math.round(ahead * per / Math.max(1, S.config.lanes)));
+  const isCalling = me.state === 'called';
+
+  let statusBlock = '';
+  if (isCalling) {
+    statusBlock = `<div class="ahead pulse" style="font-size:19px">지금 입장해 주세요</div>
+      <div class="hint" style="color:#5A4400">부스 담당자에게 대기번호를 보여주세요.</div>`;
+  } else if (me.state === 'waiting') {
+    statusBlock = `<div class="ahead">앞에 <b class="mono">${ahead}</b>팀 · 예상 <b class="mono">${eta}</b>분</div>`;
+  } else if (me.state === 'done') {
+    statusBlock = `<div class="ahead">입장 완료된 대기표입니다</div>`;
+  } else {
+    statusBlock = `<div class="ahead">취소된 대기표입니다</div>`;
+  }
+
+  return `<div class="wrap" style="max-width:440px">
+    <div style="text-align:center;padding:22px 0 14px">
+      <div class="eyebrow">${esc(S.config.title)}</div>
+    </div>
+    <div class="ticket ${isCalling ? 'calling' : ''}">
+      <div class="t-head">
+        <div class="eyebrow" style="${isCalling ? 'color:#6B5000' : ''}">${isCalling ? '호출 중' : '내 대기번호'}</div>
+        <div class="bignum mono">${pad(me.num)}</div>
+        <div style="margin-top:8px">${statusBlock}</div>
+      </div>
+      <div class="perf"></div>
+      <div class="t-body">
+        <dl class="meta-list">
+          <dt>이름</dt><dd>${esc(me.name)}${me.people ? ' · ' + me.people + '명' : ''}</dd>
+          <dt>체험일</dt><dd>${esc(fmtDate(me.date || todayStr()))}</dd>
+          <dt>체험</dt><dd>${esc(progName(me.programId))}</dd>
+          <dt>신청 시각</dt><dd class="mono">${hhmm(me.ts)}</dd>
+          <dt>상태</dt><dd>${stateChip(me.state)}</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <p class="lead">${esc(S.config.notice)}</p>
+      <div class="row-wrap" style="margin-top:12px">
+        <button class="btn ghost sm" data-act="prime">알림 소리 켜기</button>
+        ${me.state === 'waiting' ? `<button class="btn red sm" data-act="giveup" data-id="${me.id}">대기 취소</button>` : ''}
+      </div>
+      <div class="hint">이 화면을 켜 둔 채로 기다려 주세요. 화면을 닫아도 링크로 다시 들어올 수 있습니다.</div>
+      <div class="hint" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line)">${esc(S.config.consentText)}</div>
+    </div>
+  </div>`;
+}
+
+function viewStaff() {
+  const days = dateList();
+  if (days.length && !days.includes(VIEW_DATE)) VIEW_DATE = days.includes(todayStr()) ? todayStr() : days[0];
+  const w = waiting(), c = called();
+  const done = onDate(VIEW_DATE).filter(e => e.state === 'done');
+  const used = usedOn(VIEW_DATE), cap = S.config.dailyCap || 0;
+  const avg = done.length ? Math.round(done.reduce((s, e) => s + ((e.calledAt || e.ts) - e.ts), 0) / done.length / 60000) : 0;
+
+  const item = (e, now) => `<div class="q-item ${now ? 'now' : ''}">
+      <div class="q-no mono">${pad(e.num)}</div>
+      <div class="q-info">
+        <div class="q-name">${esc(e.name)}${e.phone ? ` <span style="color:var(--muted);font-weight:600">·${esc(e.phone)}</span>` : ''}</div>
+        <div class="q-sub">${e.people ? e.people + '명 · ' : ''}${esc(progName(e.programId))} · ${hhmm(e.ts)} 신청 · ${now ? hhmm(e.calledAt) + ' 호출' : minsSince(e.ts) + '분 대기'}</div>
+      </div>
+      <div class="q-acts">
+        ${now
+          ? `<button class="btn sm ghost" data-act="recall" data-id="${e.id}">재호출</button>
+             <button class="btn sm teal" data-act="done" data-id="${e.id}">입장</button>
+             <button class="btn sm red" data-act="noshow" data-id="${e.id}">노쇼</button>`
+          : `<button class="btn sm ghost" data-act="later" data-id="${e.id}">뒤로</button>
+             <button class="btn sm amber" data-act="call" data-id="${e.id}">호출</button>`}
+      </div>
+    </div>`;
+
+  return `<div class="wrap-wide">
+    <div class="topbar"><a class="back" href="#/">← 처음으로</a>
+      <div class="row-wrap"><a class="btn ghost sm" href="#/board">현황판</a><a class="btn ghost sm" href="#/poster">신청 QR</a></div>
+    </div>
+    <div class="eyebrow">부스 콘솔</div>
+    <h1>${esc(S.config.title)}</h1>
+    <div class="card" style="margin-top:14px">
+      <div class="spread">
+        <div style="flex:1;min-width:0">
+          ${days.length
+            ? `<select id="staff-date" style="font-weight:750">${days.map(d => `<option value="${d}" ${d === VIEW_DATE ? 'selected' : ''}>${fmtDate(d)}${d === todayStr() ? ' · 오늘' : ''}</option>`).join('')}</select>`
+            : `<div style="font-weight:750;font-size:15px">${fmtDate(todayStr())} · 오늘</div>
+               <div class="hint" style="margin-top:4px">설정에서 체험 기간을 등록하면 날짜별로 관리할 수 있습니다.</div>`}
+        </div>
+        <div style="text-align:right;flex:none">
+          <div class="mono" style="font-size:20px;font-weight:700">${used} / ${cap}</div>
+          <div style="font-size:11.5px;color:var(--muted);font-weight:650">신청 / 하루 정원(${capUnit()})</div>
+        </div>
+      </div>
+      <div class="cap-bar"><i style="width:${cap ? Math.min(100, used / cap * 100) : 0}%"></i></div>
+    </div>
+    <div class="stat-strip" style="margin-top:12px">
+      <div class="stat"><b class="mono">${w.length}</b><span>대기</span></div>
+      <div class="stat"><b class="mono">${c.length}</b><span>호출 중</span></div>
+      <div class="stat"><b class="mono">${done.length}</b><span>입장 완료</span></div>
+      <div class="stat"><b class="mono">${avg}</b><span>평균 대기(분)</span></div>
+    </div>
+    <button class="btn lg amber" data-act="callnext" ${w.length ? '' : 'disabled'}>다음 팀 호출 ${w.length ? '· ' + pad(w[0].num) : ''}</button>
+
+    ${c.length ? `<h2 style="margin:22px 0 10px">호출 중</h2>${c.map(e => item(e, true)).join('')}` : ''}
+
+    <h2 style="margin:22px 0 10px">대기 목록 <span style="color:var(--muted);font-weight:600">${w.length}팀</span></h2>
+    ${w.length ? w.map(e => item(e, false)).join('') : `<div class="empty">아직 신청한 팀이 없습니다.<br>안내문의 QR을 스캔하면 여기에 나타납니다.</div>`}
+
+    ${done.length ? `<details style="margin-top:22px"><summary style="cursor:pointer;font-weight:700;font-size:14px;color:var(--muted)">입장 완료 ${done.length}팀 보기</summary>
+      <div style="margin-top:10px">${done.slice().reverse().map(e => `<div class="q-item"><div class="q-no mono" style="color:var(--muted)">${pad(e.num)}</div>
+        <div class="q-info"><div class="q-name">${esc(e.name)}</div><div class="q-sub">${hhmm(e.ts)} 신청 · ${hhmm(e.calledAt || e.ts)} 입장</div></div></div>`).join('')}</div></details>` : ''}
+  </div>`;
+}
+
+function viewBoard() {
+  const d = todayStr();
+  const c = called(d).slice(0, 3), w = waiting(d);
+  const now = new Date();
+  return `<div class="board-wrap">
+    <div class="board-head">
+      <div><div class="eyebrow" style="color:#8B8FA0">${esc(S.config.place || '체험 프로그램')}</div><h1>${esc(S.config.title)}</h1></div>
+      <div class="clock mono">${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}</div>
+    </div>
+    <div class="flip-grid">
+      ${c.length ? c.map(e => `<div class="flip"><div class="lab">호출 중</div>
+          <div class="val mono" data-num="${e.num}">${pad(e.num)}</div>
+          <div class="who">${esc(e.name)}님${e.people ? ' · ' + e.people + '명' : ''}</div></div>`).join('')
+        : `<div class="flip"><div class="lab">호출 중</div><div class="val mono">---</div><div class="who">호출을 기다리는 중입니다</div></div>`}
+    </div>
+    <div class="board-list">
+      <div class="lab">대기 순서</div>
+      ${w.length ? `<div class="board-nums">${w.slice(0, 24).map(e => `<span>${pad(e.num)}</span>`).join('')}</div>` : `<div style="color:#8B8FA0;font-size:15px">대기 중인 팀이 없습니다.</div>`}
+    </div>
+    <div class="board-foot">
+      <div>
+        <div style="color:#E7E9F0;font-weight:700;font-size:15px;margin-bottom:4px">QR을 스캔해 신청하세요</div>
+        <div>대기 ${w.length}팀 · 예상 ${Math.round(w.length * ((S.config.programs[0]||{}).minutes || 15) / Math.max(1, S.config.lanes))}분</div>
+      </div>
+      <div class="row-wrap noprint">
+        <div class="board-qr" id="board-qr"></div>
+        <button class="btn ghost sm" data-act="fullscreen" style="color:#fff;border-color:#3A4050">전체화면</button>
+        <a class="btn ghost sm" href="#/" style="color:#fff;border-color:#3A4050">나가기</a>
+      </div>
+    </div>
+  </div>`;
+}
+
+function viewPoster() {
+  return `<div class="wrap">
+    <div class="topbar noprint"><a class="back" href="#/">← 처음으로</a>
+      <div class="row-wrap"><button class="btn sm ghost" data-act="copylink">링크 복사</button><button class="btn sm" data-act="print">인쇄</button></div>
+    </div>
+    <div class="poster">
+      <div class="p-eyebrow">체험 신청 안내</div>
+      <h2>${esc(S.config.title)}</h2>
+      ${S.config.place ? `<p class="lead">${esc(S.config.place)}</p>` : ''}
+      ${S.config.startDate && S.config.endDate ? `<p class="lead" style="margin-top:6px">${esc(fmtDate(S.config.startDate))} – ${esc(fmtDate(S.config.endDate))} · 하루 ${S.config.dailyCap}${capUnit()} 한정</p>` : ''}
+      <div class="p-qr" id="poster-qr"></div>
+      <div style="font-size:15px;font-weight:700">휴대폰 카메라로 QR을 스캔해 주세요</div>
+      <ol>
+        <li>QR을 스캔하면 신청 화면이 열립니다.</li>
+        <li>이름과 인원을 입력하면 대기번호가 나옵니다.</li>
+        <li>차례가 되면 화면이 바뀌고 알림이 울립니다.</li>
+      </ol>
+    </div>
+    <div class="card noprint" style="margin-top:14px">
+      <h2>신청 링크</h2>
+      <div class="linkbox">${esc(joinURL())}</div>
+      <div class="hint">${isCloud()
+        ? '이 링크에는 시트 주소가 들어 있어, 고객 휴대폰에서 신청하면 구글시트와 부스 콘솔에 바로 나타납니다.'
+        : '지금은 <b>이 기기에만 저장</b>되는 상태라 다른 휴대폰에서 신청한 내용이 보이지 않습니다. 설정 화면에서 구글시트 연결을 먼저 해주세요.'}</div>
+    </div>
+  </div>`;
+}
+
+function viewSetup() {
+  const c = S.config;
+  return `<div class="wrap">
+    <div class="topbar"><a class="back" href="#/">← 처음으로</a></div>
+    <div class="eyebrow">설정</div><h1>운영 설정</h1>
+
+    <div class="card" style="margin-top:14px">
+      <h2>기본 정보</h2>
+      <label class="f"><span>행사·체험 이름</span><input id="c-title" value="${esc(c.title)}"></label>
+      <label class="f"><span>장소 안내 (선택)</span><input id="c-place" value="${esc(c.place)}" placeholder="예: A홀 32번 부스"></label>
+      <label class="f"><span>동시에 진행하는 자리 수</span><input id="c-lanes" type="number" min="1" max="20" value="${c.lanes}">
+        <div class="hint">예상 대기시간 계산에 사용합니다. 체험대가 2개면 2를 넣으세요.</div></label>
+      <label class="f"><span>연락처 수집</span><select id="c-phone">
+        <option value="full" ${c.phoneMode==='full'?'selected':''}>전체 번호</option>
+        <option value="last4" ${c.phoneMode==='last4'?'selected':''}>뒤 4자리만</option></select></label>
+      <label class="f"><span>대기 화면 안내 문구</span><textarea id="c-notice" rows="2">${esc(c.notice)}</textarea></label>
+      <button class="btn block" data-act="save-config">기본 정보 저장</button>
+    </div>
+
+    <div class="card">
+      <h2>체험 기간과 하루 정원</h2>
+      <p class="lead">기간을 등록하면 신청 화면에 날짜 선택이 생기고, 하루 정원이 차면 그 날짜는 자동으로 마감됩니다.</p>
+      <div class="row" style="margin-top:14px;gap:10px">
+        <label class="f" style="flex:1;margin:0"><span>시작일</span><input type="date" id="c-start" value="${esc(c.startDate)}"></label>
+        <label class="f" style="flex:1;margin:0"><span>종료일</span><input type="date" id="c-end" value="${esc(c.endDate)}"></label>
+      </div>
+      <div class="row" style="margin-top:12px;gap:10px">
+        <label class="f" style="flex:1;margin:0"><span>하루 체험 가능 인원</span><input type="number" min="1" id="c-cap" value="${c.dailyCap}"></label>
+        <label class="f" style="flex:1;margin:0"><span>세는 기준</span><select id="c-capmode">
+          <option value="people" ${c.capMode==='people'?'selected':''}>인원(명) 기준</option>
+          <option value="teams" ${c.capMode==='teams'?'selected':''}>팀 수 기준</option></select></label>
+      </div>
+      <button class="btn block" data-act="save-period" style="margin-top:6px">기간·정원 저장</button>
+      ${dateList().length ? `<div class="divider"></div>
+        <table class="daytable"><thead><tr><th>날짜</th><th>신청</th><th>잔여</th></tr></thead><tbody>
+        ${dateList().map(d => { const u = usedOn(d), r = remainOn(d); return `<tr class="${r<=0?'full':''} ${d===todayStr()?'today':''}">
+          <td>${fmtDate(d)}${d===todayStr()?' · 오늘':''}</td><td class="mono">${u}${capUnit()}</td><td class="mono">${r<=0?'마감':r+capUnit()}</td></tr>`; }).join('')}
+        </tbody></table>` : ''}
+    </div>
+
+    <div class="card">
+      <h2>개인정보 안내 문구</h2>
+      <p class="lead">신청서 하단 동의 항목에 이 문구가 표시되고, 체크해야만 신청됩니다.</p>
+      <label class="f" style="margin-top:12px"><span>동의 문구</span><textarea id="c-consent" rows="3">${esc(c.consentText)}</textarea></label>
+      <button class="btn block" data-act="save-consent">문구 저장</button>
+    </div>
+
+    <div class="card">
+      <h2>체험 프로그램</h2>
+      <div id="prog-list">
+        ${c.programs.map((p, i) => `<div class="row" style="margin-bottom:8px">
+          <input value="${esc(p.name)}" data-p-name="${i}" placeholder="프로그램 이름">
+          <input type="number" min="1" style="width:96px" value="${p.minutes}" data-p-min="${i}" title="1팀당 소요 분">
+          ${c.programs.length > 1 ? `<button class="btn sm red" data-act="del-prog" data-i="${i}">삭제</button>` : ''}
+        </div>`).join('')}
+      </div>
+      <div class="hint">오른쪽 숫자는 1팀당 소요 시간(분)입니다.</div>
+      <div class="row-wrap" style="margin-top:12px">
+        <button class="btn sm ghost" data-act="add-prog">프로그램 추가</button>
+        <button class="btn sm" data-act="save-prog">프로그램 저장</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>구글시트 연결</h2>
+      <p class="lead">신청 내용이 구글시트에 바로 쌓이고, 고객 휴대폰·부스 태블릿·현황판이 같은 시트를 봅니다. 지금은 <b>${isCloud() ? '시트에 연결됨' : '이 기기에만 저장'}</b> 상태입니다.</p>
+      <label class="f" style="margin-top:12px"><span>Apps Script 웹앱 주소</span>
+        <input id="c-api" value="${esc(API)}" placeholder="https://script.google.com/macros/s/.../exec"></label>
+      <div class="row-wrap"><button class="btn" data-act="save-api">연결 저장</button>
+        ${isCloud() ? '<button class="btn ghost" data-act="clear-api">연결 해제</button><a class="btn ghost" href="' + esc(API.replace(/\/exec.*$/, '/exec')) + '?action=sheet" target="_blank" rel="noopener">시트 열기</a>' : ''}</div>
+      <div class="divider"></div>
+      <p class="hint" style="margin:0">
+        <b>연결 방법</b><br>
+        1. 구글 드라이브에서 새 스프레드시트를 만듭니다.<br>
+        2. 확장 프로그램 → Apps Script 를 열고, 같이 받은 <b>구글시트연동.gs</b> 내용을 전부 붙여넣습니다.<br>
+        3. 배포 → 새 배포 → 유형 <b>웹 앱</b>, 실행 계정 <b>나</b>, 액세스 권한 <b>모든 사용자</b>로 배포합니다.<br>
+        4. 나오는 <b>/exec</b> 주소를 위 칸에 붙여넣고 저장하면 시트에 ‘신청자’·‘설정’ 탭이 자동으로 만들어집니다.
+      </p>
+      <div class="hint" style="margin-top:8px">코드를 고쳐 다시 배포할 때는 <b>새 버전</b>으로 배포해야 반영됩니다.</div>
+    </div>
+
+    <div class="card">
+      <h2>명단·초기화</h2>
+      <div class="row-wrap">
+        <button class="btn sm ghost" data-act="csv">신청자 명단 내보내기 (CSV)</button>
+        <button class="btn sm red" data-act="reset">신청 기록 전체 삭제 (개인정보 폐기)</button>
+      </div>
+      <div class="hint">전시 종료 후 이 버튼으로 이름·연락처를 포함한 신청 기록을 시트에서 지웁니다. 기간·정원 등 설정은 남습니다.</div>
+    </div>
+  </div>`;
+}
+
+/* ---------- 렌더 ---------- */
+let lastCalledState = null;
+let prevBoardNums = [];
+function render() {
+  const r = route();
+  document.body.classList.toggle('board', r.name === 'board');
+  const me = r.name === 'ticket' ? S.entries.find(e => e.id === r.arg) : null;
+  document.body.classList.toggle('is-calling', !!(me && me.state === 'called'));
+
+  const views = { home: viewHome, join: viewJoin, staff: viewStaff, board: viewBoard, poster: viewPoster, setup: viewSetup };
+  $('#app').innerHTML = r.name === 'ticket' ? viewTicket(r.arg) : (views[r.name] || viewHome)();
+
+  const b = $('#banner');
+  b.innerHTML = netError ? `<div class="banner err">연결 오류 · ${esc(netError)}</div>`
+    : (!isCloud() && ['staff', 'board', 'poster'].includes(r.name)
+      ? `<div class="banner">이 기기에만 저장되는 상태입니다. 고객 휴대폰과 연결하려면 <a href="#/setup" style="color:#fff">설정 → 구글시트 연결</a></div>` : '');
+
+  if (r.name === 'poster') drawQR('poster-qr', joinURL(), 220);
+  if (r.name === 'board') {
+    drawQR('board-qr', joinURL(), 92);
+    document.querySelectorAll('.flip .val[data-num]').forEach(el => {
+      if (!prevBoardNums.includes(el.dataset.num)) el.classList.add('new');
+    });
+    prevBoardNums = [...document.querySelectorAll('.flip .val[data-num]')].map(el => el.dataset.num);
+  }
+
+  // 내 차례 알림
+  if (me) {
+    if (lastCalledState !== null && lastCalledState !== 'called' && me.state === 'called') beep();
+    lastCalledState = me.state;
+    document.title = me.state === 'called' ? '★ 지금 입장해 주세요' : `대기 ${pad(me.num)}번`;
+  } else { lastCalledState = null; }
+}
+
+function drawQR(elId, text, size) {
+  const el = document.getElementById(elId); if (!el) return;
+  el.innerHTML = '';
+  if (typeof QRCode === 'undefined') { el.innerHTML = '<div class="hint" style="color:#333">QR 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.</div>'; return; }
+  new QRCode(el, { text, width: size, height: size, correctLevel: QRCode.CorrectLevel.M });
+}
+
+/* ---------- 동작 ---------- */
+document.addEventListener('click', async ev => {
+  const t = ev.target.closest('[data-act]'); if (!t) return;
+  const act = t.dataset.act, id = t.dataset.id;
+
+  if (act === 'join') {
+    const nameEl = $('#f-name'), phoneEl = $('#f-phone'), peopleEl = $('#f-people'), progEl = $('#f-prog'),
+          dateEl = $('#f-date'), consentEl = $('#f-consent');
+    const name = (nameEl.value || '').trim();
+    if (!name) { nameEl.focus(); alert('이름을 입력해 주세요.'); return; }
+    const phone = (phoneEl.value || '').trim();
+    if (phone.replace(/\D/g, '').length < (S.config.phoneMode === 'last4' ? 4 : 9)) {
+      phoneEl.focus(); alert('연락처를 정확히 입력해 주세요.'); return;
+    }
+    if (!consentEl.checked) { consentEl.focus(); alert('개인정보 수집·이용에 동의해야 신청할 수 있습니다.'); return; }
+
+    const entry = {
+      id: uid(), name, phone,
+      people: peopleEl ? Number(peopleEl.value) : 1,
+      programId: progEl ? progEl.value : S.config.programs[0].id,
+      date: dateEl ? dateEl.value : todayStr(),
+      ts: Date.now(), order: Date.now(), state: 'waiting', calledAt: 0, num: 0,
+      consentAt: Date.now()
+    };
+    primeAudio();
+    t.disabled = true; t.textContent = '신청 중...';
+    const res = await op('join', { entry });
+    t.disabled = false; t.textContent = '대기 신청하기';
+    if (res) location.hash = '#/ticket/' + entry.id;
+    return;
+  }
+  if (act === 'callnext') { const w = waiting(); if (w[0]) await callOne(w[0].id); return; }
+  if (act === 'call' || act === 'recall') { await callOne(id); return; }
+  if (act === 'done') { await patchEntry(id, { state: 'done' }); return; }
+  if (act === 'noshow') { await patchEntry(id, { state: 'cancel' }); return; }
+  if (act === 'later') { await patchEntry(id, { order: Date.now() }); return; }
+  if (act === 'giveup') {
+    if (!confirm('대기를 취소할까요?')) return;
+    await patchEntry(id, { state: 'cancel' }); return;
+  }
+  if (act === 'prime') { primeAudio(); beep(); t.textContent = '알림 켜짐 ✓'; return; }
+
+  if (act === 'save-config') {
+    const r = await saveConfig({
+      title: $('#c-title').value.trim() || '체험 프로그램 접수',
+      place: $('#c-place').value.trim(),
+      lanes: Math.max(1, Number($('#c-lanes').value) || 1),
+      phoneMode: $('#c-phone').value,
+      notice: $('#c-notice').value.trim()
+    });
+    if (r) alert('저장했습니다.'); return;
+  }
+  if (act === 'save-period') {
+    const s = $('#c-start').value, e2 = $('#c-end').value;
+    if (s && e2 && e2 < s) { alert('종료일이 시작일보다 빠릅니다.'); return; }
+    const r = await saveConfig({
+      startDate: s, endDate: e2,
+      dailyCap: Math.max(1, Number($('#c-cap').value) || 1),
+      capMode: $('#c-capmode').value
+    });
+    if (r) alert('저장했습니다.'); return;
+  }
+  if (act === 'save-consent') {
+    const txt = $('#c-consent').value.trim();
+    if (!txt) { alert('동의 문구는 비워둘 수 없습니다.'); return; }
+    const r = await saveConfig({ consentText: txt });
+    if (r) alert('저장했습니다.'); return;
+  }
+  if (act === 'add-prog') { await saveConfig({ programs: [...S.config.programs, { id: 'p' + uid(), name: '새 프로그램', minutes: 15 }] }); return; }
+  if (act === 'del-prog') { const ps = S.config.programs.slice(); ps.splice(Number(t.dataset.i), 1); await saveConfig({ programs: ps }); return; }
+  if (act === 'save-prog') {
+    const names = [...document.querySelectorAll('[data-p-name]')], mins = [...document.querySelectorAll('[data-p-min]')];
+    const r = await saveConfig({
+      programs: S.config.programs.map((p, i) => ({
+        ...p, name: (names[i] && names[i].value.trim()) || p.name, minutes: Math.max(1, Number(mins[i] && mins[i].value) || p.minutes)
+      }))
+    });
+    if (r) alert('저장했습니다.'); return;
+  }
+  if (act === 'save-api') {
+    const url = $('#c-api').value.trim();
+    if (url && !/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec/.test(url)) {
+      alert('Apps Script 웹앱 주소가 맞는지 확인해 주세요. /exec 로 끝나야 합니다.'); return;
+    }
+    API = url; lsSet('expq-api', url);
+    await refresh();
+    alert(netError ? '연결에 실패했습니다: ' + netError : (isCloud() ? '구글시트에 연결했습니다.' : '연결 정보를 지웠습니다.'));
+    return;
+  }
+  if (act === 'clear-api') { API = ''; lsSet('expq-api', ''); await refresh(); return; }
+  if (act === 'copylink') { try { await navigator.clipboard.writeText(joinURL()); t.textContent = '복사됨 ✓'; } catch (e) { prompt('아래 링크를 복사하세요', joinURL()); } return; }
+  if (act === 'print') { window.print(); return; }
+  if (act === 'fullscreen') { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); return; }
+  if (act === 'csv') {
+    const rows = [['체험일', '대기번호', '이름', '연락처', '인원', '체험', '신청시각', '호출시각', '상태', '개인정보 동의']];
+    S.entries.slice().sort((a, b) => (a.date || '').localeCompare(b.date || '') || a.num - b.num).forEach(e => rows.push([
+      e.date || '', pad(e.num), e.name, e.phone || '', e.people || '', progName(e.programId),
+      new Date(e.ts).toLocaleString('ko-KR'), e.calledAt ? new Date(e.calledAt).toLocaleString('ko-KR') : '',
+      { waiting: '대기', called: '호출', done: '입장완료', cancel: '취소' }[e.state],
+      e.consentAt ? '동의 ' + new Date(e.consentAt).toLocaleString('ko-KR') : ''
+    ]));
+    const csv = '\uFEFF' + rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = `체험신청자_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    return;
+  }
+  if (act === 'reset') {
+    if (!confirm('신청자 이름·연락처를 포함한 모든 기록을 삭제합니다. 되돌릴 수 없습니다. 계속할까요?')) return;
+    const r = await op('reset', {});
+    if (r) alert('신청 기록을 모두 삭제했습니다.'); return;
+  }
+});
+document.addEventListener('change', ev => {
+  if (ev.target.id === 'f-date') {
+    const r = remainOn(ev.target.value);
+    const hint = document.getElementById('f-remain');
+    if (hint) hint.textContent = r <= 0 ? '선택한 날짜는 마감되었습니다. 다른 날짜를 골라주세요.' : `남은 자리 ${r}${capUnit()}`;
+  }
+  if (ev.target.id === 'staff-date') { VIEW_DATE = ev.target.value; render(); }
+});
+
+async function callOne(id) {
+  await patchEntry(id, { state: 'called', calledAt: Date.now() });
+}
+
+/* ---------- 자동 새로고침 ---------- */
+setInterval(() => {
+  const r = route().name;
+  if (['staff', 'board', 'ticket'].includes(r)) refresh(false);
+}, 3500);
+
+/* ---------- 시작 ---------- */
+(async function init() {
+  if (!location.hash) location.hash = '#/';
+  await refresh();
+})();
+</script>
+</body>
+</html>
