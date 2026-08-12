@@ -202,7 +202,7 @@ code.sql{display:block;white-space:pre-wrap;font-size:11.5px;background:var(--in
 
    ▼ 여러 기기에서 함께 쓰려면 구글시트 Apps Script 웹앱 주소를 넣으세요(설정 화면에서도 입력 가능).
    ============================================================ */
-const SHEET_API = 'https://script.google.com/macros/s/AKfycbzVMv4PmZM3w9N8t247JTexEfnGCjYiCf3JUYLY4rIXC13Ujh6OZ-ej9b-3T9y0wud7EA/exec';   // 예: https://script.google.com/macros/s/AKfy.../exec
+const SHEET_API = '';   // 예: https://script.google.com/macros/s/AKfy.../exec
 
 /* ---------- 기본 설정 ---------- */
 const DEFAULT_CONFIG = {
@@ -278,12 +278,10 @@ const Api = {
   },
   async call(action, payload) {
     if (!isCloud()) return localOp(action, payload);
-    // Content-Type을 text/plain으로 보내야 Apps Script에서 CORS 프리플라이트 없이 처리됩니다.
-    const r = await fetch(API, {
-      method: 'POST', redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action, room: ROOM, ...payload })
-    });
+    // POST는 iOS 사파리에서 리다이렉트+CORS 때문에 막히므로, 쓰기도 GET으로 보냅니다.
+    const q = encodeURIComponent(JSON.stringify({ action, room: ROOM, ...payload }));
+    const url = API + (API.includes('?') ? '&' : '?') + 'action=' + encodeURIComponent(action) + '&p=' + q;
+    const r = await fetch(url, { method: 'GET', redirect: 'follow' });
     if (!r.ok) throw new Error('시트에 저장하지 못했습니다 (' + r.status + ')');
     const j = await r.json();
     if (j.error) throw new Error(j.error);
