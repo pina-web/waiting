@@ -76,6 +76,9 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--ink);outline-off
 .notice-box{background:#FFF8E6;border:1px solid #F0D48A;border-radius:14px;padding:14px 16px;font-size:13.5px;line-height:1.7;color:#4A3B10;margin-bottom:14px}
 .today-strip{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-bottom:14px;margin-bottom:16px;border-bottom:2px dashed var(--line)}
 .today-strip .t-date{font-size:19px;font-weight:800;letter-spacing:-.02em;margin-top:4px}
+.info-list{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;margin:0 0 18px;font-size:13.5px}
+.info-list dt{color:var(--muted);font-weight:650}
+.info-list dd{margin:0;font-weight:700;text-align:right}
 
 /* ---------- 동의 / 정원 ---------- */
 .consent{display:flex;gap:10px;align-items:flex-start;padding:14px;border:1px solid var(--line);border-radius:12px;background:#FAF9FC}
@@ -212,18 +215,20 @@ const SHEET_API = 'https://script.google.com/macros/s/AKfycbzVMv4PmZM3w9N8t247JT
 /* ---------- 기본 설정 ---------- */
 const DEFAULT_CONFIG = {
   title: '체험 프로그램 접수',
-  place: '',
-  programs: [{ id: 'p1', name: '가죽책갈피 만들기', minutes: 15 }],
+  place: '1층 기획전시실 체험존',
+  programs: [{ id: 'p1', name: '가죽 책갈피 만들기', minutes: 15 }],
   lanes: 1,
   phoneMode: 'full',       // full | last4
   askPeople: true,
-  startDate: '',           // 체험 시작일 (YYYY-MM-DD)
-  endDate: '',             // 체험 종료일
+  startDate: '2026-08-26', // 체험 시작일 (YYYY-MM-DD)
+  endDate: '2026-09-01',   // 체험 종료일
+  startTime: '12:00',      // 체험 시작 시각
+  endTime: '14:00',        // 체험 종료 시각
   dailyCap: 30,            // 하루 체험 가능 인원
   capMode: 'people',       // people(명) | teams(팀)
   sameDayOnly: true,       // 체험 당일에만 접수
-  intro: '가죽책갈피 만들기 체험 프로그램은 (사)한국가죽공예협회에서 전시를 위해 작가님들의 재능기부로 하루 30명만 신청 가능합니다. 신청 후 노쇼를 하실 경우 추후 체험에 참여하기 어려움을 안내드립니다.',
-  notice: '호출되면 이 화면이 노란색으로 바뀌고 알림이 울립니다. 부스 근처에서 대기해 주세요.',
+  intro: '한 조각의 가죽에 무늬를 새기고 색을 입혀 나만의 책갈피를 완성하는 시간입니다. (사)한국가죽공예협회 작가님들의 재능기부로 마련된 무료 체험이며, 준비된 재료 사정으로 하루 30분까지 함께하실 수 있습니다. 신청 후 참여가 어려워지시면 미리 취소해 주세요. 기다리시는 다음 분께 자리를 드릴 수 있습니다.',
+  notice: '차례가 되면 이 화면이 노란색으로 바뀌고 알림이 울립니다. 체험존 가까이에서 편히 기다려 주세요.',
   consentText: '체험 호출을 위한 기본 정보만 수집하며 전시회 종료 후 폐기합니다.'
 };
 const newState = () => ({ config: JSON.parse(JSON.stringify(DEFAULT_CONFIG)), entries: [], seq: 0 });
@@ -434,15 +439,30 @@ function viewJoin() {
 
   /* ----- 당일 접수만 받는 경우 ----- */
   if (c.sameDayOnly) {
-    if (days.length && (today < c.startDate || today > c.endDate)) {
-      return closed(days.length && today > c.endDate
-        ? '체험이 종료되었습니다.<br>이용해 주셔서 감사합니다.'
-        : `체험 접수는 당일 현장에서만 받습니다.<br>체험 기간 ${fmtDate(c.startDate)} – ${fmtDate(c.endDate)}`);
+    const isLastDay = days.length && today >= c.endDate;
+    if (days.length && today > c.endDate) {
+      return closed('체험이 모두 끝났습니다.<br>함께해 주셔서 고맙습니다.');
+    }
+    if (days.length && today < c.startDate) {
+      return closed(`체험 신청은 당일 현장에서 받습니다.<br><br>
+        <b>${fmtDate(c.startDate)} – ${fmtDate(c.endDate)}</b><br>
+        매일 ${esc(c.startTime)} – ${esc(c.endTime)}<br>
+        ${esc(c.place || '')}`);
+    }
+    // 오늘 체험 시간이 지난 경우
+    const nowHM = hhmm(Date.now());
+    if (c.endTime && nowHM > c.endTime) {
+      return closed(isLastDay
+        ? '오늘 체험이 마무리되었습니다.<br>함께해 주셔서 고맙습니다.'
+        : `오늘 체험 시간이 끝났습니다.<br>내일 ${esc(c.startTime)}부터 다시 신청하실 수 있어요.`);
     }
     const remainNow = remainOn(today);
     if (c.dailyCap && remainNow <= 0) {
-      return closed(`오늘(${fmtDate(today)}) 준비된 <b>${c.dailyCap}${capUnit()}</b>이 모두 마감되었습니다.<br>내일 다시 신청해 주세요.`);
+      return closed(isLastDay
+        ? `오늘 준비된 <b>${c.dailyCap}${capUnit()}</b>이 모두 마감되었습니다.<br>찾아주셔서 고맙습니다.`
+        : `오늘 준비된 <b>${c.dailyCap}${capUnit()}</b>이 모두 마감되었습니다.<br>내일 ${esc(c.startTime)}에 다시 찾아와 주세요.`);
     }
+    const notYet = c.startTime && nowHM < c.startTime;
     return `<div class="wrap">
       ${head}
       <div class="card">
@@ -451,6 +471,12 @@ function viewJoin() {
           <div style="text-align:right"><div class="mono" style="font-size:24px;font-weight:700">${remainNow}</div>
             <div style="font-size:11.5px;color:var(--muted);font-weight:650">남은 자리(${capUnit()})</div></div>
         </div>
+        <dl class="info-list">
+          <dt>체험 시간</dt><dd class="mono">${esc(c.startTime)} – ${esc(c.endTime)}</dd>
+          ${c.place ? `<dt>장소</dt><dd>${esc(c.place)}</dd>` : ''}
+          <dt>체험비</dt><dd>무료</dd>
+        </dl>
+        ${notYet ? `<div class="hint" style="margin:-4px 0 14px">아직 체험 시작 전이에요. 미리 신청해 두시면 순서대로 안내해 드립니다.</div>` : ''}
         ${joinFields(c, progOpts)}
       </div>
       <div style="text-align:center;margin-top:16px"><a class="back" href="#/">← 처음으로</a></div>
@@ -659,7 +685,7 @@ function viewPoster() {
       <div class="p-eyebrow">체험 신청 안내</div>
       <h2>${esc(S.config.title)}</h2>
       ${S.config.place ? `<p class="lead">${esc(S.config.place)}</p>` : ''}
-      ${S.config.startDate && S.config.endDate ? `<p class="lead" style="margin-top:6px">${esc(fmtDate(S.config.startDate))} – ${esc(fmtDate(S.config.endDate))} · 하루 ${S.config.dailyCap}${capUnit()} 한정</p>` : ''}
+      ${S.config.startDate && S.config.endDate ? `<p class="lead" style="margin-top:6px">${esc(fmtDate(S.config.startDate))} – ${esc(fmtDate(S.config.endDate))} · 매일 ${esc(S.config.startTime || '')} – ${esc(S.config.endTime || '')}<br>하루 ${S.config.dailyCap}${capUnit()} 한정 · 무료</p>` : ''}
       <div class="p-qr" id="poster-qr"></div>
       <div style="font-size:15px;font-weight:700">휴대폰 카메라로 QR을 스캔해 주세요</div>
       <ol>
@@ -710,6 +736,11 @@ function viewSetup() {
           <option value="people" ${c.capMode==='people'?'selected':''}>인원(명) 기준</option>
           <option value="teams" ${c.capMode==='teams'?'selected':''}>팀 수 기준</option></select></label>
       </div>
+      <div class="row" style="margin-top:12px;gap:10px">
+        <label class="f" style="flex:1;margin:0"><span>체험 시작 시각</span><input type="time" id="c-stime" value="${esc(c.startTime || '')}"></label>
+        <label class="f" style="flex:1;margin:0"><span>체험 종료 시각</span><input type="time" id="c-etime" value="${esc(c.endTime || '')}"></label>
+      </div>
+      <div class="hint" style="margin:-6px 0 12px">신청 화면에 안내되고, 종료 시각이 지나면 그날 접수가 자동으로 닫힙니다.</div>
       <label class="f"><span>접수 방식</span><select id="c-sameday">
         <option value="1" ${c.sameDayOnly?'selected':''}>체험 당일에만 접수 (현장 접수)</option>
         <option value="0" ${!c.sameDayOnly?'selected':''}>다른 날짜도 미리 신청 가능</option></select>
@@ -881,7 +912,9 @@ document.addEventListener('click', async ev => {
       startDate: s, endDate: e2,
       dailyCap: Math.max(1, Number($('#c-cap').value) || 1),
       capMode: $('#c-capmode').value,
-      sameDayOnly: $('#c-sameday').value === '1'
+      sameDayOnly: $('#c-sameday').value === '1',
+      startTime: $('#c-stime').value,
+      endTime: $('#c-etime').value
     });
     if (r) alert('저장했습니다.'); return;
   }
