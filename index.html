@@ -72,6 +72,11 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--ink);outline-off
 .banner{background:#3A2A00;color:var(--amber-soft);font-size:13px;padding:10px 14px;text-align:center;font-weight:600}
 .banner.err{background:#4A1414;color:#FFD9D9}
 
+/* ---------- 안내문 / 당일 접수 ---------- */
+.notice-box{background:#FFF8E6;border:1px solid #F0D48A;border-radius:14px;padding:14px 16px;font-size:13.5px;line-height:1.7;color:#4A3B10;margin-bottom:14px}
+.today-strip{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-bottom:14px;margin-bottom:16px;border-bottom:2px dashed var(--line)}
+.today-strip .t-date{font-size:19px;font-weight:800;letter-spacing:-.02em;margin-top:4px}
+
 /* ---------- 동의 / 정원 ---------- */
 .consent{display:flex;gap:10px;align-items:flex-start;padding:14px;border:1px solid var(--line);border-radius:12px;background:#FAF9FC}
 .consent input[type=checkbox]{width:20px;height:20px;flex:none;margin:1px 0 0;accent-color:var(--ink)}
@@ -208,14 +213,16 @@ const SHEET_API = 'https://script.google.com/macros/s/AKfycbzVMv4PmZM3w9N8t247JT
 const DEFAULT_CONFIG = {
   title: '체험 프로그램 접수',
   place: '',
-  programs: [{ id: 'p1', name: '체험 프로그램', minutes: 15 }],
+  programs: [{ id: 'p1', name: '가죽책갈피 만들기', minutes: 15 }],
   lanes: 1,
   phoneMode: 'full',       // full | last4
   askPeople: true,
   startDate: '',           // 체험 시작일 (YYYY-MM-DD)
   endDate: '',             // 체험 종료일
-  dailyCap: 40,            // 하루 체험 가능 인원
+  dailyCap: 30,            // 하루 체험 가능 인원
   capMode: 'people',       // people(명) | teams(팀)
+  sameDayOnly: true,       // 체험 당일에만 접수
+  intro: '가죽책갈피 만들기 체험 프로그램은 (사)한국가죽공예협회에서 전시를 위해 작가님들의 재능기부로 하루 30명만 신청 가능합니다. 신청 후 노쇼를 하실 경우 추후 체험에 참여하기 어려움을 안내드립니다.',
   notice: '호출되면 이 화면이 노란색으로 바뀌고 알림이 울립니다. 부스 근처에서 대기해 주세요.',
   consentText: '체험 호출을 위한 기본 정보만 수집하며 전시회 종료 후 폐기합니다.'
 };
@@ -412,32 +419,67 @@ function viewJoin() {
   const c = S.config;
   const days = dateList();
   const today = todayStr();
-  const openDays = days.filter(d => d >= today);
   const progOpts = c.programs.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+  const progTitle = c.programs.length === 1 ? c.programs[0].name : '';
 
-  // 기간이 설정된 경우: 신청 가능한 날짜만 보여줌
-  if (days.length && !openDays.length) {
-    return `<div class="wrap"><div class="empty" style="margin-top:60px">체험 기간이 끝났습니다.<br>이용해 주셔서 감사합니다.</div></div>`;
+  const head = `<div class="home-hero" style="padding-top:26px">
+      <div class="eyebrow">체험 신청</div>
+      <h1>${esc(progTitle || c.title)}</h1>
+      ${c.place ? `<p class="lead">${esc(c.place)}</p>` : ''}
+    </div>
+    ${c.intro ? `<div class="notice-box">${esc(c.intro)}</div>` : ''}`;
+
+  const closed = msg => `<div class="wrap">${head}<div class="empty" style="margin-top:18px">${msg}</div>
+    <div style="text-align:center;margin-top:16px"><a class="back" href="#/">← 처음으로</a></div></div>`;
+
+  /* ----- 당일 접수만 받는 경우 ----- */
+  if (c.sameDayOnly) {
+    if (days.length && (today < c.startDate || today > c.endDate)) {
+      return closed(days.length && today > c.endDate
+        ? '체험이 종료되었습니다.<br>이용해 주셔서 감사합니다.'
+        : `체험 접수는 당일 현장에서만 받습니다.<br>체험 기간 ${fmtDate(c.startDate)} – ${fmtDate(c.endDate)}`);
+    }
+    const remainNow = remainOn(today);
+    if (c.dailyCap && remainNow <= 0) {
+      return closed(`오늘(${fmtDate(today)}) 준비된 <b>${c.dailyCap}${capUnit()}</b>이 모두 마감되었습니다.<br>내일 다시 신청해 주세요.`);
+    }
+    return `<div class="wrap">
+      ${head}
+      <div class="card">
+        <div class="today-strip">
+          <div><div class="eyebrow">오늘 접수</div><div class="t-date">${fmtDate(today)}</div></div>
+          <div style="text-align:right"><div class="mono" style="font-size:24px;font-weight:700">${remainNow}</div>
+            <div style="font-size:11.5px;color:var(--muted);font-weight:650">남은 자리(${capUnit()})</div></div>
+        </div>
+        ${joinFields(c, progOpts)}
+      </div>
+      <div style="text-align:center;margin-top:16px"><a class="back" href="#/">← 처음으로</a></div>
+    </div>`;
   }
+
+  /* ----- 미리 신청도 받는 경우(설정에서 끌 수 있음) ----- */
+  const openDays = days.filter(d => d >= today);
+  if (days.length && !openDays.length) return closed('체험이 종료되었습니다.<br>이용해 주셔서 감사합니다.');
   const pick = openDays.find(d => remainOn(d) > 0) || openDays[0] || today;
   const dayOpts = openDays.map(d => {
     const r = remainOn(d);
     return `<option value="${d}" ${r <= 0 ? 'disabled' : ''} ${d === pick ? 'selected' : ''}>${fmtDate(d)} · ${r <= 0 ? '마감' : '잔여 ' + r + capUnit()}</option>`;
   }).join('');
-  const remainNow = remainOn(pick);
-  const full = days.length && remainNow <= 0;
+  const remainPick = remainOn(pick);
 
   return `<div class="wrap">
-    <div class="home-hero" style="padding-top:26px">
-      <div class="eyebrow">체험 신청</div>
-      <h1>${esc(c.title)}</h1>
-      ${c.place ? `<p class="lead">${esc(c.place)}</p>` : ''}
-      ${days.length ? `<p class="lead" style="margin-top:6px">체험 기간 ${fmtDate(c.startDate)} – ${fmtDate(c.endDate)} · 하루 ${c.dailyCap}${capUnit()}</p>` : ''}
-    </div>
+    ${head}
     <div class="card">
       ${days.length ? `<label class="f"><span>체험 희망일</span><select id="f-date">${dayOpts}</select>
-        <div class="hint" id="f-remain">${full ? '선택한 날짜는 마감되었습니다. 다른 날짜를 골라주세요.' : `남은 자리 ${remainNow}${capUnit()}`}</div></label>` : ''}
-      <label class="f"><span>이름</span><input id="f-name" placeholder="예: 박미화" autocomplete="name"></label>
+        <div class="hint" id="f-remain">${remainPick <= 0 ? '선택한 날짜는 마감되었습니다.' : `남은 자리 ${remainPick}${capUnit()}`}</div></label>` : ''}
+      ${joinFields(c, progOpts)}
+    </div>
+    <div style="text-align:center;margin-top:16px"><a class="back" href="#/">← 처음으로</a></div>
+  </div>`;
+}
+
+function joinFields(c, progOpts) {
+  return `<label class="f"><span>이름</span><input id="f-name" placeholder="예: 박미화" autocomplete="name"></label>
       <label class="f"><span>연락처</span>
         <input id="f-phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="${c.phoneMode === 'last4' ? '뒤 4자리' : '010-0000-0000'}" ${c.phoneMode === 'last4' ? 'maxlength="4"' : ''}>
         <div class="hint">호출 안내와 본인 확인에만 사용합니다.</div></label>
@@ -453,10 +495,7 @@ function viewJoin() {
       </div>
 
       <button class="btn lg amber" data-act="join" style="margin-top:14px">대기 신청하기</button>
-      <div class="hint" style="text-align:center;margin-top:10px">신청하면 대기번호가 바로 나옵니다.</div>
-    </div>
-    <div style="text-align:center;margin-top:16px"><a class="back" href="#/">← 처음으로</a></div>
-  </div>`;
+      <div class="hint" style="text-align:center;margin-top:10px">신청하면 대기번호가 바로 나옵니다.</div>`;
 }
 
 function viewTicket(id) {
@@ -671,12 +710,23 @@ function viewSetup() {
           <option value="people" ${c.capMode==='people'?'selected':''}>인원(명) 기준</option>
           <option value="teams" ${c.capMode==='teams'?'selected':''}>팀 수 기준</option></select></label>
       </div>
+      <label class="f"><span>접수 방식</span><select id="c-sameday">
+        <option value="1" ${c.sameDayOnly?'selected':''}>체험 당일에만 접수 (현장 접수)</option>
+        <option value="0" ${!c.sameDayOnly?'selected':''}>다른 날짜도 미리 신청 가능</option></select>
+        <div class="hint">당일 접수로 두면 신청 화면에 날짜 선택이 없어지고 오늘 자리만 열립니다.</div></label>
       <button class="btn block" data-act="save-period" style="margin-top:6px">기간·정원 저장</button>
       ${dateList().length ? `<div class="divider"></div>
         <table class="daytable"><thead><tr><th>날짜</th><th>신청</th><th>잔여</th></tr></thead><tbody>
         ${dateList().map(d => { const u = usedOn(d), r = remainOn(d); return `<tr class="${r<=0?'full':''} ${d===todayStr()?'today':''}">
           <td>${fmtDate(d)}${d===todayStr()?' · 오늘':''}</td><td class="mono">${u}${capUnit()}</td><td class="mono">${r<=0?'마감':r+capUnit()}</td></tr>`; }).join('')}
         </tbody></table>` : ''}
+    </div>
+
+    <div class="card">
+      <h2>신청 화면 안내 문구</h2>
+      <p class="lead">신청 화면 상단에 노란 상자로 표시됩니다.</p>
+      <label class="f" style="margin-top:12px"><span>안내 문구</span><textarea id="c-intro" rows="5">${esc(c.intro || '')}</textarea></label>
+      <button class="btn block" data-act="save-intro">안내 문구 저장</button>
     </div>
 
     <div class="card">
@@ -792,7 +842,7 @@ document.addEventListener('click', async ev => {
       id: uid(), name, phone,
       people: peopleEl ? Number(peopleEl.value) : 1,
       programId: progEl ? progEl.value : S.config.programs[0].id,
-      date: dateEl ? dateEl.value : todayStr(),
+      date: (S.config.sameDayOnly || !dateEl) ? todayStr() : dateEl.value,
       ts: Date.now(), order: Date.now(), state: 'waiting', calledAt: 0, num: 0,
       consentAt: Date.now()
     };
@@ -830,8 +880,13 @@ document.addEventListener('click', async ev => {
     const r = await saveConfig({
       startDate: s, endDate: e2,
       dailyCap: Math.max(1, Number($('#c-cap').value) || 1),
-      capMode: $('#c-capmode').value
+      capMode: $('#c-capmode').value,
+      sameDayOnly: $('#c-sameday').value === '1'
     });
+    if (r) alert('저장했습니다.'); return;
+  }
+  if (act === 'save-intro') {
+    const r = await saveConfig({ intro: $('#c-intro').value.trim() });
     if (r) alert('저장했습니다.'); return;
   }
   if (act === 'save-consent') {
